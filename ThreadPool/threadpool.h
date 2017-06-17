@@ -1,10 +1,5 @@
 #pragma once
 
-/*
-Необходимо будет также написать класс-обертку очереди, тоже что-нибудь простенькое.
-
-*/
-
 #include <mutex>
 #include <queue>
 
@@ -16,30 +11,42 @@ namespace pt
 		{
 		public:
 			void push(const T &val) {
-				std::lock_guard<std::mutex> lock(mutexQueue);
-				queue.push(val);
+				std::lock_guard<std::mutex> lock(mutexQueue_);
+				queue_.push(val);
 			}
 			bool pop(T &val) {
-				std::lock_guard<std::mutex> lock(mutexQueue);
-				if (queue.empty) {
+				std::lock_guard<std::mutex> lock(mutexQueue_);
+				if (queue_.empty) {
 					return false;
 				}
-				val = queue.front();
-				queue.pop();
+				val = queue_.front();
+				queue_.pop();
 				return true;
 			}
 			bool empty() {
-				std::lock_guard<std::mutex> lock(mutexQueue);
-				return queue.empty();
+				std::lock_guard<std::mutex> lock(mutexQueue_);
+				return queue_.empty();
 			}
 		private:
-			std::queue<T> queue;
-			std::mutex mutexQueue;
+			std::queue<T> queue_;
+			std::mutex mutexQueue_;
 		};
 	}
 
-	template<typename T> class ThreadPool
+	class ThreadPool
 	{
+		ThreadPool(const ThreadPool &) = delete;
+		ThreadPool(ThreadPool &&) = delete;
+		ThreadPool & operator=(const ThreadPool &) = delete;
+		ThreadPool & operator=(ThreadPool &&) = delete;
 
+	public:
+
+
+
+	private:
+		std::vector<std::thread> threads_;
+		squeue::SafeQueue<std::function<void()>> tasks_;
+		squeue::SafeQueue<unsigned int> freeThreads_;
 	};
 }
