@@ -12,6 +12,7 @@ pt::ThreadPool::ThreadPool(size_t nThread) : threads_(nThread > 0 ? nThread : 2)
 
 pt::ThreadPool::~ThreadPool()
 {
+	// TODO: ChernyshovSV - необходимо добавить метод clear дл€ очереди и вызывать его здесь.
 	// TODO: ChernyshovSV - необходимо оп€ть же сделать метод у очереди который это делает, иначе будет медленно.
 	std::vector<bool> flags(threads_.size(), true);
 	unsigned int nThread;

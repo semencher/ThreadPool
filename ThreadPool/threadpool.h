@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <queue>
+#include <future>
 
 namespace pt
 {
@@ -43,15 +44,31 @@ namespace pt
 	public:
 		ThreadPool(size_t nThread = 2);
 
-		template<typename F> void addTask(F &&f)
+		template<typename F, typename... Args> auto addTask(F &&f, Args&&... args) -> std::future<decltype(f(args...))>
 		{
+			auto packTask = std::make_shared<std::packaged_task<decltype(f(args...))()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+			std::function<void()> fw([this, packTask]() {
+				(*packTask)();
+				std::function<void()> fn;
+				// Здесь возникает проблема с необходимостью запрета добавления номера в очередь свободных потоков при прикращении
+				// цикла, его можно решить если избавиться от безопасной очереди и управлять ей вручную.
+				// TODO: ChernyshovSV - решить проблему описанную выше.
+				while (this->tasks_.pop(fn)) {
+					fn();
+				}
+			});
 			unsigned int nFreeThread;
 			if (freeThreads_.pop(nFreeThread)) {
-				threads_.at(nFreeThread) = std::make_unique<std::thread>(f);
+				if (threads_.at(nFreeThread) && threads_.at(nFreeThread)->joinable()) {
+					threads_.at(nFreeThread)->join();
+				}
+				// TODO: ChernyshovSV - здесь создается поток, проверить, может можно как то устанавливать в старый.
+				threads_.at(nFreeThread) = std::make_unique<std::thread>(fw);
 			}
 			else {
-				tasks_.push(f);
+				tasks_.push(fw);
 			}
+			return packTask->get_future();
 		}
 
 		~ThreadPool();
