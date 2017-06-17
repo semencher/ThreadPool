@@ -75,10 +75,13 @@ int five(int val)
 
 int main(int argc, char* argv[])
 {
-	pt::ThreadPool threadPool(3);
+	pt::ThreadPool threadPool(2);
 	auto val1 = threadPool.addTask(one, 1);
 	auto val2 = threadPool.addTask(two, 2);
 	auto val3 = threadPool.addTask(three, 3);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
 	auto val4 = threadPool.addTask(four, 4);
 	auto val5 = threadPool.addTask(five, 5);
 

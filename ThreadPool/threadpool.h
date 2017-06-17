@@ -36,26 +36,30 @@ namespace pt
 
 	class ThreadPool
 	{
+	public:
 		ThreadPool(const ThreadPool &) = delete;
 		ThreadPool(ThreadPool &&) = delete;
 		ThreadPool & operator=(const ThreadPool &) = delete;
 		ThreadPool & operator=(ThreadPool &&) = delete;
 
-	public:
 		ThreadPool(size_t nThread = 2);
+		~ThreadPool();
 
 		template<typename F, typename... Args> auto addTask(F &&f, Args&&... args) -> std::future<decltype(f(args...))>
 		{
 			auto packTask = std::make_shared<std::packaged_task<decltype(f(args...))()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-
-			unsigned int nFreeThread;
-			if (freeThreads_.pop(nFreeThread)) {
+			int nFreeThread = -1;
+			{
+				// Проверяем есть ли не разу не использованные потоки.
+				std::lock_guard<std::mutex> lock(freeThreadsMutex_);
+				if (freeThreads_) {
+					nFreeThread = --freeThreads_;
+				}
+			}
+			if (nFreeThread != -1) {
 				std::function<void()> fw([this, packTask]() {
 					(*packTask)();
 					std::function<void()> waitingTask;
-					// Здесь возникает проблема с необходимостью запрета добавления номера в очередь свободных потоков при прикращении
-					// цикла, его можно решить если избавиться от безопасной очереди и управлять ей вручную.
-					// TODO: ChernyshovSV - решить проблему описанную выше.
 					while (!this->stop_) {
 						if (this->tasks_.pop(waitingTask)) {
 							waitingTask();
@@ -63,40 +67,35 @@ namespace pt
 						else {
 							{
 								std::unique_lock<std::mutex> lock(this->cvMutex_);
-								this->cvNewTask_.wait(lock, [this]() { return this->stop_ || !this->tasks_.empty(); });
+								this->cvNewTask_.wait(lock, [this]() { return this->stop_ || !this->tasks_.empty();	});
 							}
-							if (this->stop_) {
-								break;
-							}
-							else {
-								if (this->tasks_.pop(waitingTask)) {
-									waitingTask();
-								}
+							if (!this->stop_ && this->tasks_.pop(waitingTask)) {
+								waitingTask();
 							}
 						}
 					}
 				});
-				// TODO: ChernyshovSV - здесь создается поток, проверить, может можно как то устанавливать в старый.
 				threads_.at(nFreeThread) = std::make_unique<std::thread>(fw);
 			}
 			else {
-				std::function<void()> fw([this, packTask]() {
-					(*packTask)();
-				});
+				std::function<void()> fw([packTask]() {(*packTask)(); });
 				tasks_.push(fw);
 				cvNewTask_.notify_one();
 			}
 			return packTask->get_future();
 		}
 
-		~ThreadPool();
-
 	private:
 		std::vector<std::unique_ptr<std::thread>> threads_;
 		squeue::SafeQueue<std::function<void()>> tasks_;
-		squeue::SafeQueue<unsigned int> freeThreads_;
 
+		// Потоки которые еще не созданы.
+		unsigned int freeThreads_;
+		std::mutex freeThreadsMutex_;
+
+		// Флаг для сигнализации потокам что надо останвливаться.
 		bool stop_;
+		// Условная переменная для сигнализации о появлении новых задач.
 		std::condition_variable cvNewTask_;
 		std::mutex cvMutex_;
 	};
