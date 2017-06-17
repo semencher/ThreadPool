@@ -1,2 +1,28 @@
 #include "threadpool.h"
 
+pt::ThreadPool::ThreadPool(size_t nThread) : threads_(nThread > 0 ? nThread : 2)
+{
+	// TODO: ChernyshovSV - такой метод заполнения необходимо сделать в самой очереди для быстродействия.
+	// TODO: ChernyshovSV - узнать можно ли это сделать через библиотечные функции.
+	size_t size = threads_.size();
+	for (size_t i = 0; i < size; ++i) {
+		freeThreads_.push(i);
+	}
+}
+
+pt::ThreadPool::~ThreadPool()
+{
+	// TODO: ChernyshovSV - необходимо опять же сделать метод у очереди который это делает, иначе будет медленно.
+	std::vector<bool> flags(threads_.size(), true);
+	unsigned int nThread;
+	while (freeThreads_.pop(nThread)) {
+		flags.at(nThread) = false;
+	}
+	size_t size = threads_.size();
+	for (size_t i = 0; i < size; ++i) {
+		// TODO: ChernyshovSV - везде проверяют joinable, не очень понятно зачем. Узнать.
+		if (flags.at(i) && threads_.at(i)->joinable()) {
+			threads_.at(i)->join();
+		}
+	}
+}

@@ -41,11 +41,23 @@ namespace pt
 		ThreadPool & operator=(ThreadPool &&) = delete;
 
 	public:
+		ThreadPool(size_t nThread = 2);
 
+		template<typename F> void addTask(F &&f)
+		{
+			unsigned int nFreeThread;
+			if (freeThreads_.pop(nFreeThread)) {
+				threads_.at(nFreeThread) = std::make_unique<std::thread>(f);
+			}
+			else {
+				tasks_.push(f);
+			}
+		}
 
+		~ThreadPool();
 
 	private:
-		std::vector<std::thread> threads_;
+		std::vector<std::unique_ptr<std::thread>> threads_;
 		squeue::SafeQueue<std::function<void()>> tasks_;
 		squeue::SafeQueue<unsigned int> freeThreads_;
 	};
