@@ -8,6 +8,7 @@ pt::ThreadPool::ThreadPool(size_t nThread) : threads_(nThread > 0 ? nThread : 2)
 	for (size_t i = 0; i < size; ++i) {
 		freeThreads_.push(static_cast<unsigned int>(i));
 	}
+	stop_ = false;
 }
 
 pt::ThreadPool::~ThreadPool()

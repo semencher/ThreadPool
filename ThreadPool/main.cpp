@@ -75,7 +75,7 @@ int five(int val)
 
 int main(int argc, char* argv[])
 {
-	pt::ThreadPool threadPool(2);
+	pt::ThreadPool threadPool(3);
 	auto val1 = threadPool.addTask(one, 1);
 	auto val2 = threadPool.addTask(two, 2);
 	auto val3 = threadPool.addTask(three, 3);
