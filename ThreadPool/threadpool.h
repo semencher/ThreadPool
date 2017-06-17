@@ -16,7 +16,7 @@ namespace pt
 			}
 			bool pop(T &val) {
 				std::lock_guard<std::mutex> lock(mutexQueue_);
-				if (queue_.empty) {
+				if (queue_.empty()) {
 					return false;
 				}
 				val = queue_.front();

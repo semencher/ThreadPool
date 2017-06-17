@@ -6,7 +6,7 @@ pt::ThreadPool::ThreadPool(size_t nThread) : threads_(nThread > 0 ? nThread : 2)
 	// TODO: ChernyshovSV - узнать можно ли это сделать через библиотечные функции.
 	size_t size = threads_.size();
 	for (size_t i = 0; i < size; ++i) {
-		freeThreads_.push(i);
+		freeThreads_.push(static_cast<unsigned int>(i));
 	}
 }
 
