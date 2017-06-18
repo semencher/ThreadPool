@@ -28,6 +28,12 @@ namespace pt
 				std::lock_guard<std::mutex> lock(mutexQueue_);
 				return queue_.empty();
 			}
+			void clear() {
+				std::lock_guard<std::mutex> lock(mutexQueue_);
+				while (!queue_.empty()) {
+					queue_.pop();
+				}
+			}
 		private:
 			std::queue<T> queue_;
 			std::mutex mutexQueue_;
@@ -53,6 +59,7 @@ namespace pt
 				// Проверяем есть ли не разу не использованные потоки.
 				std::lock_guard<std::mutex> lock(freeThreadsMutex_);
 				if (freeThreads_) {
+					waitingThreads_--;
 					nFreeThread = --freeThreads_;
 				}
 			}
@@ -67,7 +74,9 @@ namespace pt
 						else {
 							{
 								std::unique_lock<std::mutex> lock(this->cvMutex_);
+								this->waitingThreads_++;
 								this->cvNewTask_.wait(lock, [this]() { return this->stop_ || !this->tasks_.empty();	});
+								this->waitingThreads_--;
 							}
 							if (!this->stop_ && this->tasks_.pop(waitingTask)) {
 								waitingTask();
@@ -85,6 +94,11 @@ namespace pt
 			return packTask->get_future();
 		}
 
+		size_t size() { return threads_.size(); }
+		void clearTaskQueue() { tasks_.clear(); }
+		std::function<void()> popTask();
+		size_t idleThreads() { return waitingThreads_; }
+
 	private:
 		std::vector<std::unique_ptr<std::thread>> threads_;
 		squeue::SafeQueue<std::function<void()>> tasks_;
@@ -92,6 +106,8 @@ namespace pt
 		// Потоки которые еще не созданы.
 		unsigned int freeThreads_;
 		std::mutex freeThreadsMutex_;
+		// Сумма не созданных и простаивающих потоков.
+		unsigned int waitingThreads_;
 
 		// Флаг для сигнализации потокам что надо останвливаться.
 		bool stop_;

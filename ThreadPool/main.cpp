@@ -70,6 +70,7 @@ int five(int val)
 	std::cout << "Five " + std::to_string(val) + "\n";
 	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 	std::cout << "Five " + std::to_string(val) + "\n";
+	throw std::exception("Some error!");
 	return val;
 }
 
@@ -89,7 +90,13 @@ int main(int argc, char* argv[])
 	std::cout << std::to_string(val2.get()) + "\n";
 	std::cout << std::to_string(val3.get()) + "\n";
 	std::cout << std::to_string(val4.get()) + "\n";
-	std::cout << std::to_string(val5.get()) + "\n";
+
+	try {
+		std::cout << std::to_string(val5.get()) + "\n";
+	}
+	catch (std::exception e) {
+		std::cout << std::string(e.what()) + "\n";
+	}
 
 	return 0;
 }
