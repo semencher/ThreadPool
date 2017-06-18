@@ -2,8 +2,15 @@
 
 pt::ThreadPool::ThreadPool(size_t nThread) : threads_(nThread > 0 ? nThread : 2)
 {
-	freeThreads_ = static_cast<unsigned int>(threads_.size());
+	waitingThreads_ = static_cast<unsigned int>(threads_.size());
+	freeThreads_ = waitingThreads_;
 	stop_ = false;
+}
+
+std::function<void()> pt::ThreadPool::popTask() {
+	std::function<void()> f;
+	tasks_.pop(f);
+	return f;
 }
 
 pt::ThreadPool::~ThreadPool()
